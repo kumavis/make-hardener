@@ -33,40 +33,8 @@
  * @param {HardenerOptions=} options Options for creation
  */
 function makeHardener(initialFringe, options = {}) {
-  const { getOwnPropertyDescriptors, getPrototypeOf } = Object;
-  const { preventExtensions, defineProperty, ownKeys } = Reflect;
-
-  function freeze(obj) {
-    // the writable and configurable attributes are set to false.
-    const descs = getOwnPropertyDescriptors(obj)
-    ownKeys(descs).forEach(name => {
-      const desc = descs[name]
-      if (!desc.configurable && !desc.writable) {
-        return
-      }
-      if ('get' in desc || 'set' in desc) {
-        const { set, get, enumerable } = desc
-        defineProperty(obj, name, {
-          set,
-          get,
-          enumerable,
-          writable: false,
-          configurable: false,
-        })
-        return
-      } else {
-        const { value, enumerable } = desc
-        defineProperty(obj, name, {
-          value,
-          enumerable,
-          writable: false,
-          configurable: false,
-        })
-      }
-    })
-    // the obj is set to prevent extensions
-    preventExtensions(obj)
-  }
+  const { freeze, getOwnPropertyDescriptors, getPrototypeOf, preventExtensions } = Object;
+  const { defineProperty, ownKeys } = Reflect;
 
   // Objects that we won't freeze, either because we've frozen them already,
   // or they were one of the initial roots (terminals). These objects form
@@ -134,7 +102,7 @@ function makeHardener(initialFringe, options = {}) {
       // Object are verified before being enqueued,
       // therefore this is a valid candidate.
       // Throws if this fails (strict mode).
-      freeze(obj);
+      freezeWithOverride(obj);
 
       // we rely upon certain commitments of Object.freeze and proxies here
 
@@ -206,6 +174,64 @@ function makeHardener(initialFringe, options = {}) {
       // changes it. The two-argument form of forEach passes the second
       // argument as the 'this' binding, so we add to the correct set.
       toFreeze.forEach(fringeSet.add, fringeSet);
+    }
+
+    function freezeWithOverride (obj) {
+      // set the writable and configurable attributes to false
+      const descs = getOwnPropertyDescriptors(obj)
+      ownKeys(descs).forEach(name => {
+        const desc = descs[name]
+        // property is already frozen
+        if (!desc.configurable && !desc.writable) {
+          return
+        }
+        if ('value' in desc) {
+          // simple value: apply override workaround
+          const { value, enumerable } = desc
+          const newDesc = {
+            get () {
+              return value
+            },
+            set (newValue) {
+              const receiver = this
+              if (receiver === obj) {
+                throw new TypeError(`Cannot assign to read only property '${name}' of object '${obj}'`)
+              } else {
+                defineProperty(receiver, {
+                  newValue,
+                  writable: true,
+                  enumerable: true,
+                  configurable: true,
+                })
+              }
+            },
+            enumerable,
+            configurable: false,
+          }
+          // hang the getter-wrapped value off of the getter fn
+          // so its found by the obj graph walk
+          newDesc.get.value = value
+          // getters and setters created here must also be frozen
+          freeze(newDesc.get)
+          freeze(newDesc.set)
+          toFreeze.add(newDesc.get)
+          toFreeze.add(newDesc.set)
+          // define the property
+          defineProperty(obj, name, newDesc)
+        } else {
+          // getters + setters: redefine as not configurable
+          const { set, get, enumerable } = desc
+          defineProperty(obj, name, {
+            set,
+            get,
+            enumerable,
+            configurable: false,
+          })
+          return
+        }
+      })
+      // the obj is set to prevent extensions
+      preventExtensions(obj)
     }
 
     enqueue(root);

@@ -2,7 +2,7 @@ import test from 'tape';
 import makeHardener from '../src/index';
 
 test('makeHardener', t => {
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const o = { a: {} };
   t.equal(h(o), o);
   t.ok(Object.isFrozen(o));
@@ -12,7 +12,7 @@ test('makeHardener', t => {
 
 test('do not freeze roots', t => {
   const parent = { I_AM_YOUR: 'parent' };
-  const h = makeHardener([parent, Object.prototype]);
+  const h = makeHardener([parent, Object.prototype, Function.prototype]);
   const o = { a: {} };
   Object.setPrototypeOf(o, parent);
   t.equal(h(o), o);
@@ -25,7 +25,7 @@ test('do not freeze roots', t => {
 test('complain about prototype not in roots', t => {
   const parent = { I_AM_YOUR: 'parent' };
   // at least one prototype is missing in each hardener
-  const h1 = makeHardener([Object.prototype]);
+  const h1 = makeHardener([Object.prototype, Function.prototype]);
   const h2 = makeHardener([parent]);
   const o = { a: {} };
   Object.setPrototypeOf(o, parent);
@@ -39,7 +39,7 @@ test('complain about prototype not in roots', t => {
 });
 
 test('harden the same thing twice', t => {
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const o = { a: {} };
   t.equal(h(o), o);
   t.equal(h(o), o);
@@ -49,7 +49,7 @@ test('harden the same thing twice', t => {
 });
 
 test('harden objects with cycles', t => {
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const o = { a: {} };
   o.a.foo = o;
   t.equal(h(o), o);
@@ -59,7 +59,7 @@ test('harden objects with cycles', t => {
 });
 
 test('harden overlapping objects', t => {
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const o1 = { a: {} };
   const o2 = { a: o1.a };
   t.equal(h(o1), o1);
@@ -73,7 +73,7 @@ test('harden overlapping objects', t => {
 
 test('do not commit early', t => {
   // refs #4
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const a = { a: 1 };
   const b = { b: 1, __proto__: a };
   const c = { c: 1, __proto__: b };
@@ -88,7 +88,7 @@ test('do not commit early', t => {
 
 test('can harden all objects in a single call', t => {
   // refs #4
-  const h = makeHardener([Object.prototype, Object.getPrototypeOf([])]);
+  const h = makeHardener([Object.prototype, Function.prototype, Object.getPrototypeOf([])]);
   const a = { a: 1 };
   const b = { b: 1, __proto__: a };
   const c = { c: 1, __proto__: b };
@@ -102,7 +102,7 @@ test('can harden all objects in a single call', t => {
 });
 
 test('harden() tolerates objects with null prototypes', t => {
-  const h = makeHardener([Object.prototype]);
+  const h = makeHardener([Object.prototype, Function.prototype]);
   const o = { a: 1 };
   Object.setPrototypeOf(o, null);
   t.equal(h(o), o);
@@ -124,7 +124,7 @@ function gpo(o) {
 }
 
 test('harden async function', t => {
-  const h = makeHardener([Object.prototype, gpo(async _ => _)]);
+  const h = makeHardener([Object.prototype, Function.prototype, gpo(async _ => _)]);
   const o = async _a => 1;
   t.equal(h(o), o);
   t.ok(Object.isFrozen(o));
@@ -140,7 +140,7 @@ test('harden generator', t => {
   // to include both %Generator% (reachable as gen.__proto__) and
   // %GeneratorPrototype% (reachable as either gen.__proto__.prototype or
   // gen.prototype.__proto__) in the fringe.
-  const h = makeHardener([gpo(gen), gpo(gen).prototype]);
+  const h = makeHardener([Function.prototype, gpo(gen), gpo(gen).prototype]);
   function* o() {
     yield 1;
     yield 2;
@@ -154,7 +154,7 @@ test('harden async generator', t => {
   async function* agen() {
     yield 1;
   }
-  const h = makeHardener([gpo(agen), gpo(agen).prototype]);
+  const h = makeHardener([Function.prototype, gpo(agen), gpo(agen).prototype]);
   async function* o() {
     yield 1;
     yield 2;
@@ -168,7 +168,7 @@ test('harden generator instances', t => {
   function* gen() {
     yield 1;
   }
-  const h = makeHardener([gpo(gen), gpo(gen).prototype]);
+  const h = makeHardener([Function.prototype, gpo(gen), gpo(gen).prototype]);
   function* o() {
     yield 1;
     yield 2;
@@ -194,7 +194,7 @@ test('prepare objects', t => {
       obj.b += 1;
     }
   };
-  const h = makeHardener([Object.prototype], { naivePrepareObject });
+  const h = makeHardener([Object.prototype, Function.prototype], { naivePrepareObject });
   t.equal(h(o), o);
   t.equal(o.b, 124);
   t.equal(o.a.b, 124);
@@ -216,7 +216,7 @@ test('fringeSet must support add/has', t => {
 
 test('fringeSet is used', t => {
   const fringeSet = new WeakSet();
-  const h = makeHardener([Object.prototype], { fringeSet });
+  const h = makeHardener([Object.prototype, Function.prototype], { fringeSet });
   const o = { a: { b: 123 } };
   t.equal(h(o), o);
   t.equal(o.a.b, 123);
@@ -233,13 +233,13 @@ test('initialFringe can be undefined with fringeSet', t => {
 
 test('do not prepare objects already in the fringeSet', t => {
   const fringeSet = new WeakSet();
-  const h = makeHardener([Object.prototype], { fringeSet });
+  const h = makeHardener([Object.prototype, Function.prototype], { fringeSet });
   const naivePrepareObject = obj => {
     if (typeof obj.b === 'number') {
       obj.b += 1;
     }
   };
-  const inch = makeHardener([Object.prototype], {
+  const inch = makeHardener([Object.prototype, Function.prototype], {
     fringeSet,
     naivePrepareObject,
   });
