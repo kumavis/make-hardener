@@ -181,8 +181,10 @@ function makeHardener(initialFringe, options = {}) {
       const descs = getOwnPropertyDescriptors(obj)
       ownKeys(descs).forEach(name => {
         const desc = descs[name]
-        // property is already frozen
-        if (!desc.configurable && !desc.writable) {
+        // property cannot be modified
+        // writable properties will be set to writable false
+        // as part of the last step
+        if (!desc.configurable) {
           return
         }
         if ('value' in desc) {
@@ -230,8 +232,9 @@ function makeHardener(initialFringe, options = {}) {
           return
         }
       })
-      // the obj is set to prevent extensions
-      preventExtensions(obj)
+      // freeze any propertise with configurable: false, writable: true
+      // and prevent extensions
+      freeze(obj)
     }
 
     enqueue(root);

@@ -269,3 +269,18 @@ test('override workaround', t => {
   t.equal(s.toString(), '[SubClass]');
   t.end();
 });
+
+test('configurable false, writable true', t => {
+  const h = makeHardener([Object.prototype, Function.prototype]);
+  const o = {};
+  Object.defineProperty(o, 'a', {
+    value: {},
+    enumerable: true,
+    writable: true,
+    configurable: false,
+  })
+  t.equal(h(o), o);
+  t.ok(Object.isFrozen(o));
+  t.ok(Object.isFrozen(o.a));
+  t.end();
+});
