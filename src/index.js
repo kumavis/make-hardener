@@ -197,8 +197,8 @@ function makeHardener(initialFringe, options = {}) {
               if (receiver === obj) {
                 throw new TypeError(`Cannot assign to read only property '${name}' of object '${obj}'`)
               } else {
-                defineProperty(receiver, {
-                  newValue,
+                defineProperty(receiver, name, {
+                  value: newValue,
                   writable: true,
                   enumerable: true,
                   configurable: true,

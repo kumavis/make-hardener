@@ -252,3 +252,20 @@ test('do not prepare objects already in the fringeSet', t => {
   t.equal(o.b, 124);
   t.end();
 });
+
+test('override workaround', t => {
+  const h = makeHardener([Object.prototype, Function.prototype]);
+  function BaseClass () {}
+  BaseClass.prototype.toString = () => '[BaseClass]';
+
+  t.equal(h(BaseClass), BaseClass);
+  t.ok(Object.isFrozen(BaseClass));
+
+  function SubClass () {}
+  SubClass.prototype = Object.create(BaseClass.prototype);
+  SubClass.prototype.toString = () => '[SubClass]';
+  const s = new SubClass()
+
+  t.equal(s.toString(), '[SubClass]');
+  t.end();
+});
