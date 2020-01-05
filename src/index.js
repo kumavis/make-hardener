@@ -33,8 +33,40 @@
  * @param {HardenerOptions=} options Options for creation
  */
 function makeHardener(initialFringe, options = {}) {
-  const { freeze, getOwnPropertyDescriptors, getPrototypeOf } = Object;
-  const { ownKeys } = Reflect;
+  const { getOwnPropertyDescriptors, getPrototypeOf } = Object;
+  const { preventExtensions, defineProperty, ownKeys } = Reflect;
+
+  function freeze(obj) {
+    // the writable and configurable attributes are set to false.
+    const descs = getOwnPropertyDescriptors(obj)
+    ownKeys(descs).forEach(name => {
+      const desc = descs[name]
+      if (!desc.configurable && !desc.writable) {
+        return
+      }
+      if ('get' in desc || 'set' in desc) {
+        const { set, get, enumerable } = desc
+        defineProperty(obj, name, {
+          set,
+          get,
+          enumerable,
+          writable: false,
+          configurable: false,
+        })
+        return
+      } else {
+        const { value, enumerable } = desc
+        defineProperty(obj, name, {
+          value,
+          enumerable,
+          writable: false,
+          configurable: false,
+        })
+      }
+    })
+    // the obj is set to prevent extensions
+    preventExtensions(obj)
+  }
 
   // Objects that we won't freeze, either because we've frozen them already,
   // or they were one of the initial roots (terminals). These objects form
