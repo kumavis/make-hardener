@@ -33,8 +33,8 @@
  * @param {HardenerOptions=} options Options for creation
  */
 function makeHardener(initialFringe, options = {}) {
-  const { freeze, getOwnPropertyDescriptors, getPrototypeOf, preventExtensions } = Object;
-  const { defineProperty, ownKeys } = Reflect;
+  const { freeze, getOwnPropertyDescriptors, getPrototypeOf, defineProperty } = Object;
+  const { ownKeys } = Reflect;
 
   // Objects that we won't freeze, either because we've frozen them already,
   // or they were one of the initial roots (terminals). These objects form
