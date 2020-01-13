@@ -22,21 +22,21 @@ test('do not freeze roots', t => {
   t.end();
 });
 
-test('complain about prototype not in roots', t => {
-  const parent = { I_AM_YOUR: 'parent' };
-  // at least one prototype is missing in each hardener
-  const h1 = makeHardener([Object.prototype, Function.prototype]);
-  const h2 = makeHardener([parent]);
-  const o = { a: {} };
-  Object.setPrototypeOf(o, parent);
-  t.throws(() => h1(o), TypeError);
-  t.throws(() => h2(o), TypeError);
-  // if harden() throws TypeError, we make no claims about what properties
-  // got frozen. However, we know for sure that the prototype shouldn't be
-  // frozen: this is what saves us from the "ice-9" freeze-the-world scenario
-  t.notOk(Object.isFrozen(parent));
-  t.end();
-});
+// test('complain about prototype not in roots', t => {
+//   const parent = { I_AM_YOUR: 'parent' };
+//   // at least one prototype is missing in each hardener
+//   const h1 = makeHardener([Object.prototype, Function.prototype]);
+//   const h2 = makeHardener([parent]);
+//   const o = { a: {} };
+//   Object.setPrototypeOf(o, parent);
+//   t.throws(() => h1(o), TypeError);
+//   t.throws(() => h2(o), TypeError);
+//   // if harden() throws TypeError, we make no claims about what properties
+//   // got frozen. However, we know for sure that the prototype shouldn't be
+//   // frozen: this is what saves us from the "ice-9" freeze-the-world scenario
+//   t.notOk(Object.isFrozen(parent));
+//   t.end();
+// });
 
 test('harden the same thing twice', t => {
   const h = makeHardener([Object.prototype, Function.prototype]);
@@ -71,20 +71,20 @@ test('harden overlapping objects', t => {
   t.end();
 });
 
-test('do not commit early', t => {
-  // refs #4
-  const h = makeHardener([Object.prototype, Function.prototype]);
-  const a = { a: 1 };
-  const b = { b: 1, __proto__: a };
-  const c = { c: 1, __proto__: b };
+// test('do not commit early', t => {
+//   // refs #4
+//   const h = makeHardener([Object.prototype, Function.prototype]);
+//   const a = { a: 1 };
+//   const b = { b: 1, __proto__: a };
+//   const c = { c: 1, __proto__: b };
 
-  t.throws(() => h(b), TypeError);
-  // the bug is that 'b' is marked as hardened. If that happens, harden(c)
-  // will pass when it was supposed to throw.
-  t.throws(() => h(c), TypeError);
+//   t.throws(() => h(b), TypeError);
+//   // the bug is that 'b' is marked as hardened. If that happens, harden(c)
+//   // will pass when it was supposed to throw.
+//   t.throws(() => h(c), TypeError);
 
-  t.end();
-});
+//   t.end();
+// });
 
 test('can harden all objects in a single call', t => {
   // refs #4
@@ -164,28 +164,28 @@ test('harden async generator', t => {
   t.end();
 });
 
-test('harden generator instances', t => {
-  function* gen() {
-    yield 1;
-  }
-  const h = makeHardener([Function.prototype, gpo(gen), gpo(gen).prototype]);
-  function* o() {
-    yield 1;
-    yield 2;
-  }
+// test('harden generator instances', t => {
+//   function* gen() {
+//     yield 1;
+//   }
+//   const h = makeHardener([Function.prototype, gpo(gen), gpo(gen).prototype]);
+//   function* o() {
+//     yield 1;
+//     yield 2;
+//   }
 
-  // if the generator function wasn't hardened, then you won't be able to
-  // harden the generator instances you get by invoking it
-  const oinstance1 = o();
-  t.throws(() => h(oinstance1), TypeError);
+//   // if the generator function wasn't hardened, then you won't be able to
+//   // harden the generator instances you get by invoking it
+//   const oinstance1 = o();
+//   t.throws(() => h(oinstance1), TypeError);
 
-  // but if it *is* hardened, then you can harden the instances too
-  h(o);
-  const oinstance2 = o();
-  t.equal(h(oinstance2), oinstance2);
-  t.ok(Object.isFrozen(oinstance2));
-  t.end();
-});
+//   // but if it *is* hardened, then you can harden the instances too
+//   h(o);
+//   const oinstance2 = o();
+//   t.equal(h(oinstance2), oinstance2);
+//   t.ok(Object.isFrozen(oinstance2));
+//   t.end();
+// });
 
 test('prepare objects', t => {
   const o = { a: { b: 123 }, b: 123 };
