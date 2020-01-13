@@ -67,7 +67,6 @@ function makeHardener(initialFringe, options = {}) {
 
   function harden(root) {
     const toFreeze = new Set();
-    const prototypes = new Map();
     const paths = new WeakMap();
 
     // If val is something we should be freezing but aren't yet,
@@ -114,11 +113,7 @@ function makeHardener(initialFringe, options = {}) {
       const descs = getOwnPropertyDescriptors(obj);
       const path = paths.get(obj) || 'unknown';
 
-      // console.log(`adding ${proto} to prototypes under ${path}`);
-      if (proto !== null && !prototypes.has(proto)) {
-        prototypes.set(proto, path);
-        paths.set(proto, `${path}.__proto__`);
-      }
+      enqueue(proto, `${path}.__proto__`);
 
       ownKeys(descs).forEach(name => {
         const pathname = `${path}.${String(name)}`;
@@ -144,30 +139,6 @@ function makeHardener(initialFringe, options = {}) {
     function dequeue() {
       // New values added before forEach() has finished will be visited.
       toFreeze.forEach(freezeAndTraverse); // todo curried forEach
-    }
-
-    function checkPrototypes() {
-      prototypes.forEach((path, p) => {
-        if (!(toFreeze.has(p) || fringeSet.has(p))) {
-          // all reachable properties have already been frozen by this point
-          let msg;
-          try {
-            msg = `prototype ${p} of ${path} is not already in the fringeSet`;
-          } catch (e) {
-            // `${(async _=>_).__proto__}` fails in most engines
-            msg =
-              'a prototype of something is not already in the fringeset (and .toString failed)';
-            try {
-              console.log(msg);
-              console.log('the prototype:', p);
-              console.log('of something:', path);
-            } catch (_e) {
-              // console.log might be missing in restrictive SES realms
-            }
-          }
-          throw new TypeError(msg);
-        }
-      });
     }
 
     function commit() {
@@ -244,7 +215,6 @@ function makeHardener(initialFringe, options = {}) {
     // console.log("fringeSet", fringeSet);
     // console.log("prototype set:", prototypes);
     // console.log("toFreeze set:", toFreeze);
-    checkPrototypes();
     commit();
 
     return root;
